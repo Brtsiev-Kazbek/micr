@@ -12,12 +12,12 @@ def cmd_run_echoed(cmd, **kwargs):
 
 if __name__ == '__main__':
     for entry in os.scandir("./tests/"):
-        porth_ext = '.micr'
-        if entry.is_file() and entry.path.endswith(porth_ext):
+        micr_ext = '.micr'
+        if entry.is_file() and entry.path.endswith(micr_ext):
             print('[INFO] Testing %s' % entry.path)
             sim_output = cmd_run_echoed(["./micr.py", "sim", entry.path], capture_output=True, check=True).stdout
             cmd_run_echoed(["./micr.py", "com", entry.path], check=True)
-            com_output = cmd_run_echoed([entry.path[:-len(porth_ext)]], capture_output=True, check=True).stdout
+            com_output = cmd_run_echoed([entry.path[:-len(micr_ext)]], capture_output=True, check=True).stdout
             if sim_output != com_output:
                 print("[ERROR] Output discrepancy between simulation and compilation")
                 print("  Simulation output:")
