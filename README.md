@@ -1,47 +1,51 @@
 # Micr
 
-**WARNING! Язык программирования в разработке!**
+**WARNING! This language is a work in progress!**
 
-Это мой миниатюрный stack-based язык программирования.
+Micr is planned to be (these are not the selling points, but rather milestones of the development)
+- [x] Compiled
+- [x] Native
+- [x] Stack-based (just like Forth)
+- [x] [Turing-complete]
+- [ ] Self-hosted 
+- [ ] Statically typed (the type checking is probably gonna be similar to the [WASM validation](https://binji.github.io/posts/webassembly-type-checking/))
 
-В планах реализовать
-- [x] Компиляция
-- [x] Работа на основе стека
-- [ ] Тьюринг полнота
-- [ ] Статическа типизация
-- [ ] Переписать язык на самого себя
+## Example
 
-## Примеры
+Hello, World:
 
-Простая программа, которая выводит числа от 10 до 0:
+```pascal
+"Hello, World\n" 1 1 syscall3
+```
 
-```micr
-10 while dup 0 > do
-  dup dump
-  1 -
+Simple program that prints numbers from 0 to 99 in an ascending order:
+
+```pascal
+100 0 while 2dup > do
+    dup print 1 +
 end
 ```
 
-## Быстрый старт
+## Quick Start
 
-### Симуляция
+### Simulation
 
-Интепретация программы.
+Simulation simply interprets the program.
 
 ```console
 $ cat program.micr
-34 35 + dump
+34 35 + print
 $ ./micr.py sim program.micr
 69
 ```
 
-### Компиляция
+### Compilation
 
-Компиляция генерирует асм код, собирается это все с помощью [nasm](https://www.nasm.us/), линкуется с помощью [GNU ld](https://www.gnu.org/software/binutils/). Данные программы должны быть доступны в `$PATH`.
+Compilation generates assembly code, compiles it with [nasm](https://www.nasm.us/), and then links it with [GNU ld](https://www.gnu.org/software/binutils/). So make sure you have both available in your `$PATH`.
 
 ```console
 $ cat program.micr
-34 35 + dump
+34 35 + print
 $ ./micr.py com program.micr
 [INFO] Generating ./program.asm
 [CMD] nasm -felf64 ./program.asm
@@ -50,100 +54,206 @@ $ ./program
 69
 ```
 
-## Возможности языка
+### Testing
 
-Это то, что язык поддерживает до сих пор. **Поскольку язык находится в стадии разработки, точный набор операций может измениться.**
+Test cases are located in [./tests/](./tests/) folder. The `*.txt` files are the expected outputs of the corresponding programs.
 
-### Манипуляции со стеком
+Run [./test.py](./test.py) script to execute the programs and assert their outputs:
 
-- `<integer>` - поместить целое число в стек. Прямо сейчас целое число — это все, что можно передать в [int](https://docs.python.org/3/library/functions.html#int) функцию.
+```console
+$ ./test.py
+```
+
+To updated expected output files run the `record` subcommand:
+
+```console
+$ ./test.py record
+```
+
+The [./examples/](./examples/) contains programs that are ment for showcasing the language rather then testing it, but we still can them for testing just like the stuff in [./tests/](./tests/):
+
+```console
+$ ./test.py -f ./examples/
+$ ./test.py -f ./examples/ record
+```
+
+## Language Reference
+
+This is what the language supports so far. **Since the language is a work in progress the exact set of operations is the subject to change.**
+
+### Stack Manipulation
+
+- `<integer>` - push the integer onto the stack. Right now the integer is anything that is parsable by [int](https://docs.python.org/3/library/functions.html#int) function.
 ```
 push(<integer>)
 ```
-- `dup` - дублировать элемент поверх стека.
+- `<string>` - push size and address of the string literal onto the stack. A string literal is a sequence of character enclosed with `"`.
+```
+size = len(<string>)
+push(n)
+ptr = static_memory_alloc(n)
+copy(ptr, <string>)
+push(ptr)
+```
+- `dup` - duplicate an element on top of the stack.
 ```
 a = pop()
 push(a)
 push(a)
 ```
-- `dump` - вывести элемент поверх стека на стандартный вывод и удалить его из стека.
+- `2dup` - duplicate pair.
+```
+b = pop()
+a = pop()
+push(a)
+push(b)
+push(a)
+push(b)
+```
+- `swap` - swap 2 elements on the top of the stack.
+```
+a = pop()
+b = pop()
+push(a)
+push(b)
+```
+- `drop` - drops the top element of the stack.
+```
+pop()
+```
+- `print` - print the element on top of the stack in a free form to stdout and remove it from the stack.
 ```
 a = pop()
 print(a)
 ```
+- `over`
+```
+a = pop()
+b = pop()
+push(b)
+push(a)
+push(b)
+```
 
-### Сравнение
+### Comparison
 
-- `=` - проверяет, равны ли два элемента на вершине стека. Удаляет элементы из стека и помещает «1», если они равны, и «0», если они не равны.
+- `=` - checks if two elements on top of the stack are equal. Removes the elements from the stack and pushes `1` if they are equal and `0` if they are not.
 ```
 a = pop()
 b = pop()
 push(int(a == b))
 ```
-- `>` - проверяет, больше ли нижний элемент в стеке, чем верхний.
+- `!=` - checks if two elements on top of the stack are not equal.
+```
+a = pop()
+b = pop()
+push(int(a != b))
+```
+- `>` - checks if the element below the top greater than the top.
 ```
 b = pop()
 a = pop()
 push(int(a > b))
 ```
+- `<` - checks if the element below the top less than the top.
+```
+b = pop()
+a = pop()
+push(int(a < b))
+```
+- `>=`
+```
+b = pop()
+a = pop()
+push(int(a >= b))
+```
+- `<=`
+```
+b = pop()
+a = pop()
+push(int(a >= b))
+```
 
-### Арифметика
+### Arithmetic
 
-- `+` - суммирует два элемента на вершине стека.
+- `+` - sums up two elements on the top of the stack.
 ```
 a = pop()
 b = pop()
 push(a + b)
 ```
-- `-` - вычитает вершину стека из нижнего элемента.
+- `-` - subtracts the top of the stack from the element below.
 ```
 a = pop()
 b = pop()
 push(b - a)
 ```
+- `mod`
+```
+a = pop()
+b = pop()
+push(b % a)
+```
 
-### Поток управления
+### Bitwise
 
-- `if <then-branch> else <else-branch> end` - помещает элемент на вершину стека, и если элемент не равен `0`, выполняет `<then-branch>`, иначе `<else-branch>`.
-- `while <condition> do <body> end` - продолжает выполнять `<condition>` и `<body>` до тех пор, пока `<condition>` производит `0` в верхней части стека. Проверка результата `<codition>` удаляет его из стека.
+- `shr`
+```
+a = pop()
+b = pop()
+push(b >> a)
+```
+- `shl`
+```
+a = pop()
+b = pop()
+push(b << a)
+```
+- `bor`
+```
+a = pop()
+b = pop()
+push(b | a)
+```
+- `band`
+```
+a = pop()
+b = pop()
+push(b & a)
+```
 
-### Память
+### Control Flow
 
-- `mem` - помещает в стек адрес начала памяти, где вы можете читать и писать.
+- `if <then-branch> else <else-branch> end` - pops the element on top of the stack and if the element is not `0` executes the `<then-branch>`, otherwise `<else-branch>`.
+- `while <condition> do <body> end` - keeps executing both `<condition>` and `<body>` until `<condition>` produces `0` at the top of the stack. Checking the result of the `<condition>` removes it from the stack.
+
+### Memory
+
+- `mem` - pushes the address of the beginning of the memory where you can read and write onto the stack.
 ```
 push(mem_addr)
 ```
-- `<-` - сохранить данный байт по заданному адресу.
+- `<-` - store a given byte at the given address.
 ```
 byte = pop()
 addr = pop()
 store(addr, byte)
 ```
-- `->` - загрузить байт с заданного адреса.
+- `->` - load a byte from the given address.
 ```
 addr = pop()
 byte = load(addr)
 push(byte)
 ```
 
-### Система
+### System
 
-- `syscall1` - выполнить системный вызов с 1 аргументом.
+- `syscall<n>` - perform a syscall with n arguments where n is in range `[0..6]`. (`syscall1`, `syscall2`, etc)
 ```
 syscall_number = pop()
 <move syscall_number to the corresponding register>
-for i in range(1):
+for i in range(n):
     arg = pop()
     <move arg to i-th register according to the call convention>
 <perform the syscall>
 ```
-- `syscall3` - выполнить системный вызов с 3 аргументами.
-```
-syscall_number = pop()
-<move syscall_number to the corresponding register>
-for i in range(3):
-    arg = pop()
-    <move arg to i-th register according to the call convention>
-<perform the syscall>
-```
-
