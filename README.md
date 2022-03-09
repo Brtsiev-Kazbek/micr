@@ -234,3 +234,22 @@ for i in range(n):
     <move arg to i-th register according to the call convention>
 <perform the syscall>
 ```
+
+
+## Макросы
+
+Определите слово, которое расширяется в инструкцию во время компиляции
+
+```
+macro write
+    1 1 syscall3
+end
+```
+
+### Импорт
+
+Импортровать инструкции из файла `std.micr`
+
+```
+include "std.micr"
+```
